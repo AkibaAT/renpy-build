@@ -44,7 +44,31 @@ Platform("ios", "sim-arm64", "3")
 Platform("web", "wasm", "3")
 
 
+def setup_tars_directories():
+    """
+    Copy tar files from renpy/tars to tars directory if renpy/tars exists.
+    This allows additional tars to be provided when mounting the renpy directory.
+    """
+    renpy_tars = root / "renpy" / "tars"
+    main_tars = root / "tars"
+
+    if renpy_tars.exists() and renpy_tars.is_dir():
+        print(f"Found additional tars directory: {renpy_tars}")
+
+        # Ensure main tars directory exists
+        main_tars.mkdir(exist_ok=True)
+
+        # Copy files from renpy/tars to tars, but don't overwrite existing files
+        for tar_file in renpy_tars.iterdir():
+            if tar_file.is_file():
+                dest_file = main_tars / tar_file.name
+                print(f"Copying {tar_file.name} from renpy/tars to tars/")
+                shutil.copy2(tar_file, dest_file)
+
+
 def build(args):
+    # Set up tars directories before building
+    setup_tars_directories()
 
     platforms = set(i.strip() for i in args.platforms.split(",") if i)
     archs = set(i.strip() for i in args.archs.split(",") if i)

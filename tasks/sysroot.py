@@ -1,5 +1,6 @@
 from renpybuild.context import Context
 from renpybuild.task import task
+from renpybuild.run import is_native_linux_build
 
 PACKAGES = [
     "build-essential",
@@ -37,6 +38,11 @@ PACKAGES = [
 @task(platforms="linux", archs="x86_64,aarch64", always=True)
 def install_linux(c: Context):
 
+    # Skip sysroot creation for native builds - we use system libraries directly
+    if is_native_linux_build(c.arch):
+        print(f"Native {c.arch} build detected - skipping sysroot creation")
+        return
+
     if c.arch == "x86_64":
         deb_arch = "amd64"
         release = "jammy"
@@ -61,6 +67,10 @@ def install_linux(c: Context):
 
 @task(platforms="linux")
 def permissions(c: Context):
+    # Skip for native builds - no sysroot to set permissions on
+    if is_native_linux_build(c.arch):
+        return
+
     import os
 
     c.var("uid", str(os.getuid()))
@@ -78,6 +88,10 @@ def fix_pkgconf_prefix(c: Context):
     m/pkgconf/pkgconf/pull/280.
     """
 
+    # Skip for native builds - no sysroot to fix
+    if is_native_linux_build(c.arch):
+        return
+
     c.run("""
           bash -c "grep -rl {{sysroot}} {{sysroot}}/usr/lib/{{architecture_name}}/pkgconfig > /dev/null || sed -i 's#/usr#{{sysroot}}/usr#g' $(grep -rl /usr {{sysroot}}/usr/lib/{{architecture_name}}/pkgconfig) $(grep -rl /usr {{sysroot}}/usr/share/pkgconfig)"
           """)
@@ -90,11 +104,19 @@ def update_wayland_headers(c: Context):
     any of the newer features.
     """
 
+    # Skip for native builds - use system wayland headers
+    if is_native_linux_build(c.arch):
+        return
+
     for i in c.path("{{source}}/wayland-headers/").glob("wayland*.h"):
         c.copy(str(i), "{{ sysroot }}/usr/include/" + i.name)
 
 @task(platforms="linux")
 def update_wayland_pkgconfig(c: Context):
+
+    # Skip for native builds - use system wayland pkgconfig
+    if is_native_linux_build(c.arch):
+        return
 
     for i in c.path("{{source}}/wayland-pc-files/").glob("wayland*.pc"):
         c.copy(str(i), "{{ sysroot }}/usr/lib/{{architecture_name}}/pkgconfig/" + i.name)

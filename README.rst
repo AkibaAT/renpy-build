@@ -63,6 +63,12 @@ you are ready to build.
 Finally, a number of files need to be downloaded from third parties. These
 are listed in `tars/README.rst <tars/README.rst>`_ .
 
+**Docker Usage with Additional Tars**: When using the Docker image, you can
+provide additional tar files by placing them in a ``tars`` directory within
+your mounted renpy directory. The build system will automatically copy any
+files from ``renpy/tars/`` to the main ``tars/`` directory before building,
+allowing you to add extra dependencies without rebuilding the Docker image.
+
 Building
 ---------
 

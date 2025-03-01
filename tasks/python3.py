@@ -1,5 +1,6 @@
 from renpybuild.context import Context
 from renpybuild.task import task, annotator
+import platform
 
 import tomllib
 from pathlib import Path
@@ -7,6 +8,22 @@ from pathlib import Path
 version = "3.12.8"
 win_version = "3.12.7"
 web_version = "3.12.8"
+
+
+def get_host_sysconfigdata_filename():
+    """
+    Get the correct sysconfigdata filename for the current host architecture.
+    """
+    host_arch = platform.machine()
+    if host_arch == "x86_64":
+        arch_name = "x86_64"
+    elif host_arch in ["aarch64", "arm64"]:
+        arch_name = "aarch64"
+    else:
+        # Fallback to x86_64 for unknown architectures
+        arch_name = "x86_64"
+
+    return f"_sysconfigdata__linux_{arch_name}-linux-gnu.py"
 
 @annotator
 def annotate(c: Context):
@@ -62,7 +79,7 @@ def patch_ios(c: Context):
     c.run("cp {{patches}}/_scproxy.pyx Modules")
     c.chdir("Modules")
     c.run("rm -f _scproxy.c")
-    c.run("cython _scproxy.pyx")
+    c.run("python -m cython _scproxy.pyx")
 
 
 @task(kind="python", pythons="3", platforms="windows")
@@ -108,7 +125,7 @@ def common_post(c: Context):
 
     c.copy("{{ host }}/bin/python3", "{{ install }}/bin/hostpython3")
 
-    for i in [ "_sysconfigdata__linux_x86_64-linux-gnu.py" ]:
+    for i in [ get_host_sysconfigdata_filename() ]:
         c.var("i", i)
 
         c.copy(
@@ -232,7 +249,7 @@ def build_web(c: Context):
     c.run("""{{ make }} install""")
     c.copy("{{ host }}/bin/python3", "{{ install }}/bin/hostpython3")
 
-    for i in [ "ssl.py", "_sysconfigdata__linux_x86_64-linux-gnu.py" ]:
+    for i in [ "ssl.py", get_host_sysconfigdata_filename() ]:
         c.var("i", i)
 
         c.copy(

@@ -45,7 +45,7 @@ cdef JNIEnv *get_platform_jnienv():
     return SDL_GetAndroidJNIEnv()
 """)
 
-    c.run("""cython jnius.pyx""")
+    c.run("""python -m cython jnius.pyx""")
 
     c_fn = c.path("jnius.c")
 

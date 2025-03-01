@@ -60,7 +60,9 @@ sudo apt-get install --no-install-recommends -y \
     libjpeg-dev
 
 # Darwin clang_rt is needed to prevent undefined symbol: __isPlatformVersionAtLeast
-sudo tar xzf "$BASE/prebuilt/clang_rt.tar.gz" -C /usr/lib/clang/$LLVM_MAJOR/lib/
+CLANG_RESOURCE_DIR=$(clang-$LLVM_MAJOR -print-resource-dir)
+sudo mkdir -p "$CLANG_RESOURCE_DIR/lib"
+sudo tar xzf "$BASE/prebuilt/clang_rt.tar.gz" -C "$CLANG_RESOURCE_DIR/lib/"
 
 # UV
 wget -qO- https://astral.sh/uv/install.sh | sh

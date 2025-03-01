@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import sys
 import shlex
@@ -8,6 +9,26 @@ import sysconfig
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 
 from .context import Context
+
+
+def is_native_linux_build(target_arch: str) -> bool:
+    """
+    Check if we're building natively for Linux (no cross-compilation needed).
+
+    Returns True if the host architecture matches the target architecture,
+    meaning we can compile natively without a sysroot.
+    """
+    host_arch = platform.machine()
+
+    # Map host architecture names to our target architecture names
+    arch_map = {
+        "x86_64": "x86_64",
+        "aarch64": "aarch64",
+        "arm64": "aarch64",
+    }
+
+    normalized_host = arch_map.get(host_arch, host_arch)
+    return normalized_host == target_arch
 
 # This caches the results of emsdk_environment.
 emsdk_cache : dict[str, str] = { }
@@ -201,6 +222,7 @@ def build_environment(c):
     if c.kind == "host" or c.kind == "host-python" or c.kind == "cross":
 
         llvm(c)
+        c.var("lipo", "{{llvm_bin}}llvm-lipo{{llvm_suffix}}")
         c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
         c.env("PKG_CONFIG_PATH", "{{ install }}/lib/pkgconfig")
 
@@ -210,25 +232,47 @@ def build_environment(c):
 
     elif (c.platform == "linux") and (c.arch == "x86_64"):
 
-        llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
-        c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
-        c.env("PKG_CONFIG_LIBDIR", "{{ sysroot }}/usr/lib/{{ architecture_name }}/pkgconfig:{{ sysroot }}/usr/share/pkgconfig")
-        # c.env("PKG_CONFIG_SYSROOT_DIR", "{{ sysroot }}")
+        if is_native_linux_build("x86_64"):
+            # Native build - no cross-compilation needed
+            llvm(c, clang_args="-fPIC -pthread")
+            c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
+            c.env("PKG_CONFIG_LIBDIR", "/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig")
 
-        c.var("cmake_system_name", "Linux")
-        c.var("cmake_system_processor", "x86_64")
-        c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH='{{ install }};{{ sysroot }}' -DCMAKE_SYSROOT={{ sysroot }}")
+            c.var("cmake_system_name", "Linux")
+            c.var("cmake_system_processor", "x86_64")
+            c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH={{ install }}")
+        else:
+            # Cross-compilation using sysroot
+            llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
+            c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
+            c.env("PKG_CONFIG_LIBDIR", "{{ sysroot }}/usr/lib/{{ architecture_name }}/pkgconfig:{{ sysroot }}/usr/share/pkgconfig")
+            # c.env("PKG_CONFIG_SYSROOT_DIR", "{{ sysroot }}")
+
+            c.var("cmake_system_name", "Linux")
+            c.var("cmake_system_processor", "x86_64")
+            c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH='{{ install }};{{ sysroot }}' -DCMAKE_SYSROOT={{ sysroot }}")
 
     elif (c.platform == "linux") and (c.arch == "aarch64"):
 
-        llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
-        c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
-        c.env("PKG_CONFIG_LIBDIR", "{{ sysroot }}/usr/lib/{{ architecture_name }}/pkgconfig:{{ sysroot }}/usr/share/pkgconfig")
-        # c.env("PKG_CONFIG_SYSROOT_DIR", "{{ sysroot }}")
+        if is_native_linux_build("aarch64"):
+            # Native build - no cross-compilation needed
+            llvm(c, clang_args="-fPIC -pthread")
+            c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
+            c.env("PKG_CONFIG_LIBDIR", "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig")
 
-        c.var("cmake_system_name", "Linux")
-        c.var("cmake_system_processor", "aarch64")
-        c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH='{{ install }};{{ sysroot }}' -DCMAKE_SYSROOT={{ sysroot }}")
+            c.var("cmake_system_name", "Linux")
+            c.var("cmake_system_processor", "aarch64")
+            c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH={{ install }}")
+        else:
+            # Cross-compilation using sysroot
+            llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
+            c.env("LDFLAGS", "{{ LDFLAGS }} -L{{install}}/lib64")
+            c.env("PKG_CONFIG_LIBDIR", "{{ sysroot }}/usr/lib/{{ architecture_name }}/pkgconfig:{{ sysroot }}/usr/share/pkgconfig")
+            # c.env("PKG_CONFIG_SYSROOT_DIR", "{{ sysroot }}")
+
+            c.var("cmake_system_name", "Linux")
+            c.var("cmake_system_processor", "aarch64")
+            c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH='{{ install }};{{ sysroot }}' -DCMAKE_SYSROOT={{ sysroot }}")
 
     elif (c.platform == "linux") and (c.arch == "armv7l"):
 
@@ -301,9 +345,10 @@ def build_environment(c):
             clang_args="-target x86_64-apple-darwin14 --sysroot {{cross}}/sdk",
         )
 
+        c.var("lipo", "{{llvm_bin}}llvm-lipo{{llvm_suffix}}")
         c.env("MACOSX_DEPLOYMENT_TARGET", "10.10")
         c.env("CFLAGS", "{{ CFLAGS }} -mmacos-version-min=10.10")
-        c.env("LDFLAGS", "{{ LDFLAGS }} -mmacos-version-min=10.10")
+        c.env("LDFLAGS", "{{ LDFLAGS }} -mmacos-version-min=10.10 -lmockrt")
 
         c.var("cmake_system_name", "Darwin")
         c.var("cmake_system_processor", "x86_64")
@@ -316,9 +361,10 @@ def build_environment(c):
             clang_args="-target arm64-apple-macos11 --sysroot {{cross}}/sdk",
         )
 
+        c.var("lipo", "{{llvm_bin}}llvm-lipo{{llvm_suffix}}")
         c.env("MACOSX_DEPLOYMENT_TARGET", "11.0")
         c.env("CFLAGS", "{{ CFLAGS }} -mmacos-version-min=11.0")
-        c.env("LDFLAGS", "{{ LDFLAGS }} -mmacos-version-min=11.0")
+        c.env("LDFLAGS", "{{ LDFLAGS }} -mmacos-version-min=11.0 -lmockrt")
 
         c.var("cmake_system_name", "Darwin")
         c.var("cmake_system_processor", "aarch64")

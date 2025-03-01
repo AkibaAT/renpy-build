@@ -47,7 +47,7 @@ DEF ARCH = "{{ c.arch.replace('sim-', '') }}"
 DEF PYOBJUS_CYTHON_3 = True
 """))
 
-    c.run("""cython pyobjus.pyx""")
+    c.run("""python -m cython pyobjus.pyx""")
 
     c_fn = c.path("pyobjus.c")
 

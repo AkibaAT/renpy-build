@@ -8,10 +8,10 @@ def unpack_sdk(c: Context):
 
     c.clean("{{ install }}/steam")
 
-    if not c.path("{{ tars }}/steamworks_sdk_162.zip").exists():
+    if not c.path("{{ tars }}/steamworks_sdk_163.zip").exists():
         return
 
-    zf = zipfile.ZipFile(c.path("{{ tars }}/steamworks_sdk_162.zip"))
+    zf = zipfile.ZipFile(c.path("{{ tars }}/steamworks_sdk_163.zip"))
     zf.extractall(c.path("{{ install }}/steam"))
     zf.close()
 
@@ -34,6 +34,8 @@ def build(c: Context):
 
     if c.platform == "linux" and c.arch == "x86_64":
         c.var("steamdll", "{{ host }}/steam/sdk/redistributable_bin/linux64/libsteam_api.so")
+    elif c.platform == "linux" and c.arch == "aarch64":
+        c.var("steamdll", "{{ host }}/steam/sdk/redistributable_bin/linuxarm64/libsteam_api.so")
     elif c.platform == "windows" and c.arch == "x86_64":
         c.var("steamdll", "{{ host }}/steam/sdk/redistributable_bin/win64/steam_api64.dll")
     elif c.platform == "mac":

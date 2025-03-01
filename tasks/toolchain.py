@@ -91,7 +91,7 @@ def build(c: Context):
     os.symlink("iPhoneSimulator.sdk", c.path("sdk"))
 
 
-@task(platforms="ios")
+@task(platforms="ios,mac")
 def mockrt(c: Context):
     c.clean()
     c.run("{{ CC }} {{ CFLAGS }} -c {{ source }}/mockrt.c")

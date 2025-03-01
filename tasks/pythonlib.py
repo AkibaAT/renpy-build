@@ -220,9 +220,12 @@ def python3(c: Context):
         c.path("{{ install }}/lib/{{ pythonver }}/site-packages"),
         c.path("{{ pytmp }}/pyjnius"),
         c.path("{{ pytmp }}/pyobjus"),
-        c.path("{{ pytmp }}/steam"),
         c.path("{{ source }}/brotli"),
         ]
+
+    steam_supported_platforms = {"linux", "windows", "mac"}
+    if c.platform in steam_supported_platforms:
+        search.append(c.path("{{ pytmp }}/steam"))
 
     dist = c.path("{{ distlib }}/{{ pythonver }}")
     c.clean("{{ distlib }}/{{ pythonver }}")
@@ -254,7 +257,7 @@ def python3(c: Context):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(fn, dest)
 
-    if not c.path("{{host}}/steam/sdk").exists():
+    if c.platform not in steam_supported_platforms:
         used_rules.add("steamapi")
 
     if rules - used_rules:
@@ -264,10 +267,11 @@ def python3(c: Context):
     c.copy("{{ runtime }}/site3.py", "{{ distlib }}/{{ pythonver }}/sitecustomize.py")
 
     import socket
+    import os
     with open(c.path("{{ distlib }}/{{ pythonver }}/sitecustomize.py"), "a") as f:
         f.write("\n")
         f.write("import site\n")
-        if socket.gethostname() == "eileen":
+        if socket.gethostname() == "eileen" or os.environ.get("OKAPY_OFFICIAL_BUILD") == "true":
             f.write("site.renpy_build_official = True\n")
 
     c.compile("{{ distlib }}/{{ pythonver }}/sitecustomize.py")
