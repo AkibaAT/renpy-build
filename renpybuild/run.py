@@ -143,6 +143,7 @@ def build_environment(c):
     c.var("make", "nice make -j " + str(cpuccount))
     c.var("configure", "./configure")
     c.var("cmake_configure", "cmake")
+    c.var("cmake_find_root_path_modes", "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
 
     c.var("sysroot", c.tmp / f"sysroot.{c.platform}-{c.arch}")
     c.var("build_platform", sysconfig.get_config_var("HOST_GNU_TYPE"))
@@ -241,6 +242,7 @@ def build_environment(c):
             c.var("cmake_system_name", "Linux")
             c.var("cmake_system_processor", "x86_64")
             c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH={{ install }}")
+            c.var("cmake_find_root_path_modes", "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH")
         else:
             # Cross-compilation using sysroot
             llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
@@ -263,6 +265,7 @@ def build_environment(c):
             c.var("cmake_system_name", "Linux")
             c.var("cmake_system_processor", "aarch64")
             c.var("cmake_args", "-DCMAKE_FIND_ROOT_PATH={{ install }}")
+            c.var("cmake_find_root_path_modes", "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH")
         else:
             # Cross-compilation using sysroot
             llvm(c, clang_args="-target {{ host_platform }} --sysroot {{ sysroot }} -fPIC -pthread")
@@ -458,7 +461,7 @@ def build_environment(c):
 
     if c.kind not in ( "host", "host-python", "cross" ):
         c.env("PKG_CONFIG_LIBDIR", "{{ install }}/lib/pkgconfig:{{ PKG_CONFIG_LIBDIR }}")
-        c.var("cmake_args", "{{cmake_args}} -DCMAKE_SYSTEM_NAME={{ cmake_system_name }} -DCMAKE_SYSTEM_PROCESSOR={{ cmake_system_processor }} -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
+        c.var("cmake_args", "{{cmake_args}} -DCMAKE_SYSTEM_NAME={{ cmake_system_name }} -DCMAKE_SYSTEM_PROCESSOR={{ cmake_system_processor }} {{ cmake_find_root_path_modes }}")
 
     c.env("PKG_CONFIG", "pkg-config --static")
 
